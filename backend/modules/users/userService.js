@@ -1,31 +1,37 @@
 import bcrypt from 'bcrypt';
-import db from '../../config/db.js'
+
+// ⚠️ Importar pool dentro das funções (lazy loading) para garantir que dotenv.config() foi executado antes
+async function getPool() {
+    const { default: pool } = await import('../../config/db.js');
+    return pool;
+}
 
 export const criar = async (dados) => {
+    const pool = await getPool();
     
-    const { nomeUser, senha } = dados;
+    const { nome_usuario, idade_usuario, email_usuario, tipo_usuario , senha_usuario } = dados;
 
-        if (!nomeUser || !senha) {
+        if (!nome_usuario || !senha_usuario) {
             throw new Error('Campos obrigatórios ausentes');
         } 
 
-        const senhaHash = await bcrypt.hash(senha, 10);
+        const senhaHash_usuario = await bcrypt.hash(senha_usuario, 10);
 
-            const novoCadastro = {
-                id: db.length + 1,
-                nomeUser,
-                senha: senhaHash,
-            };
+            const [result] = await pool.query(
+                `INSERT INTO usuarios ( nome_usuario, idade_usuario, email_usuario, tipo_usuario , senha_usuario, data_criacao_usuario )
+                VALUES (?, ?, ?, ?, ?, NOW())`,
+                [ nome_usuario, idade_usuario, email_usuario, tipo_usuario , senhaHash_usuario ]
+            );
 
-            db.push(novoCadastro);
-
-            return novoCadastro;
+            return { id: result.insertId, nome_usuario, email_usuario, tipo_usuario, idade_usuario };
 
         
     
 }
 
-export const listar = () => {
-    return db;
+export const listar = async () => {
+    const pool = await getPool();
+    const [rows] = await pool.query('SELECT * FROM usuarios');
+    return rows;
 }
 
